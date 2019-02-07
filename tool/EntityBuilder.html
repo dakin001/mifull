@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <link href="https://cdn.bootcss.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <title> Code Builder </title>
+    <style>
+        body{ padding:20px;}
+    </style>
+</head>
+<body>
+
+    <div>
+        <textarea class="form-control" style="min-height:200px; min-width:500px" id="input"></textarea>
+    </div>
+    <div style="margin-top:5px;"></div>
+    <div>
+        <button class="btn btn-default" onclick="csharp()">c# fileds</button>
+        <!--<button class="btn btn-default" onclick="java()">java fileds</button>-->
+        <button class="btn btn-default" onclick="sqlIn()">sql in</button>
+        <button class="btn btn-default" onclick="sqlSet()">sql set</button>
+        <button class="btn btn-default" onclick="tableToSql()">table to Sql values </button>
+        <button class="btn btn-primary" onclick="copyToClipboard()">copy result</button>
+    </div>
+    <pre style="margin-top:10px;background-color:#f8f9fa; padding:1rem" id="result"></pre>
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script>
+
+        function setResult(val) {
+            $("#result").text(val);
+        }
+
+        function getFields() {
+            var txt = $("#input").val().trim();
+            var arr = txt.length == 0 ? [] : txt.split(/[,\n]/).map(x => x.trim()).filter(x => x.length > 0);
+            return Array.from(new Set(arr))
+        }
+
+        function csharp() {
+            var txt = getFields().map(x => `public string ${x} {get; set;}`).join('\r\n');
+            setResult(txt);
+        }
+        function sqlIn() {
+            var txt = getFields().map(x => `'${x}'`).join('\r\n,');
+            setResult(txt);
+        }
+        function sqlSet() {
+            var txt = getFields().map(x => `${x} = @${x}`).join('\r\n,');
+            setResult(txt);
+        }
+        function copyToClipboard() {
+
+            var textArea = document.createElement("textarea");
+            textArea.value = $("#result").text();
+            document.body.appendChild(textArea);
+            //  textArea.focus();
+            textArea.select();
+
+            //setTimeout(() => {
+
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+            //},
+            //3000)
+        }
+
+        function tableToSql() {
+           let gridData = getGridData();
+
+            let txt = gridData.data.map(line => "(" + line.join(",") + ")").join('\r\n,');
+
+            txt = `-- INSERT INTO #tmp_GridResults (${gridData.headers.join(", ") })\r\n`
+                + `select * from(values \r\n ${txt}\r\n) as T( ${gridData.headers.join(", ")})`;
+            setResult(txt);
+        }
+        function getGridData() {
+            let rows = getFields();
+            let headers = [];
+            let headerRow = rows.shift();
+            headerRow.split('\t').map(x => x.trim()).forEach((x, i) => {
+                if (headers.indexOf(x) >= 0) {
+                    x = x + '_' + i;
+                }
+                headers.push(x);
+            });
+
+            let data = [];
+            return {
+                headers,
+                data: rows.map(x => x.split('\t').map(y => y == "NULL" ? "NULL" : "N'" + y.replace("'","''").trim() + "'"))
+            }
+        }
+
+    </script>
+</body>
+</html>
