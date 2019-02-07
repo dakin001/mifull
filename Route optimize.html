@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <link href="https://cdn.bootcss.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <title> Rote optimize </title>
+    <style>
+        body {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div>
+    </div>
+    <div style="margin-top:5px;"></div>
+    <div>
+        <input type="number" id="pointNum" class="" value="10" /> task number
+
+        <button class="btn btn-primary" onclick="getPath()">getPath </button>
+    </div>
+    <div style="margin-top:5px;"></div>
+
+    <canvas id="result" width="1400" height="600"></canvas>
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script>
+
+        function getPath() {
+            var canvas = document.getElementById('result');
+            var context = canvas.getContext("2d");
+            var ctx = context;
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            const aisleLengh = 500;
+
+            // draw row
+            for (let i = 1; i <= 12; i++) {
+
+                let x = (i % 2) === 1 ? -20 : 0;
+                x += i * 100;
+
+                ctx.beginPath();
+                ctx.moveTo(x, 50);
+                ctx.lineTo(x, 500);
+                ctx.stroke();
+
+                context.fillStyle = 'black';
+                ctx.font = "10px Arial";
+                ctx.fillText("row" + i, x - 10, 510);
+
+                // draw aisles
+                if ((i % 2) === 1) {
+                    let aisle = Math.ceil(i / 2);
+                    context.fillStyle = 'black';
+                    ctx.font = "20px Arial";
+                    ctx.fillText("Aisle" + aisle, - 70 + x, 450);
+
+
+                    // 矩形货架
+                    context.rect(x, 50, 60, 450);
+                    context.rect(x + 60, 50, 60, 450);
+                    ctx.stroke();
+
+                    // Bay
+                    context.setLineDash([2, 3]);
+                    for (let bayNum = 1; bayNum <= 9; bayNum++) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 50 + 45 * bayNum);
+                        ctx.lineTo(x + 120, 50 + 45 * bayNum);
+                        ctx.stroke();
+                    }
+                    context.setLineDash([]);
+                }
+            }
+
+
+            let points = [];
+            let pointNum = $('#pointNum').val();
+
+            //   context.fillRect(0, 0, 100, 100);
+            for (let i = 0; i < pointNum; i++) {
+                let row = Math.ceil(Math.random() * 12);
+                let aisle = Math.floor(row / 2) + 1;
+                let x = (row % 2) === 1 ? -20 : 0;
+                x += row * 100;
+
+                var y = Math.round(Math.random() * 450) + 50;
+                var z = aisle * 400;
+                let bay = Math.ceil((y -50) / 45);
+
+                points.push({ x: x, y: y, z: z, aisle: aisle });
+
+                context.beginPath();
+                context.arc(x, y, 15, 0, Math.PI * 2);
+                context.closePath();
+
+                let locationName = aisle + "," + ("" + row).padStart(2, '0') + ("" + bay).padStart(2, '0') + "11";
+
+                context.fillStyle = 'rgba(0,255,0,0.35)';
+                context.fill();
+                context.fillStyle = 'red';
+                ctx.font = "20px Arial";
+                ctx.fillText("" + (i + 1), x - 5, y + 5);
+                context.fillStyle = 'black';
+                ctx.font = "10px Arial";
+                ctx.fillText(locationName, x + 10, y + 10);
+            }
+
+            let currentLocation = { x: 0, y: 0, z: 0, aisle: 1 }; // please scan current location
+            currentLocation = Object.assign({}, points[Math.round(Math.random() * points.length)]);
+            currentLocation.x += 50;
+            currentLocation.y = 550;
+
+            context.fillStyle = 'blue';
+            context.beginPath();
+            context.arc(currentLocation.x, currentLocation.y, 15, 0, Math.PI * 2);
+            context.closePath();
+            context.fill();
+
+            let nextPoint;
+            while (true) {
+                nextPoint = getNextNearestPoint(currentLocation);
+                if (!nextPoint) {
+                    break;
+                }
+
+                context.strokeStyle = "blue";
+                ctx.beginPath();
+                ctx.moveTo(currentLocation.x, currentLocation.y);
+                ctx.lineTo(nextPoint.x, nextPoint.y);
+                ctx.stroke();
+
+                currentLocation = nextPoint;
+            }
+
+            //获取最近的点
+            function getNextNearestPoint(currentLocation) {
+                let pp = points.filter(p => !p.routed).map(p => {
+                    if (p.aisle === currentLocation.aisle) {
+                        p.distanceToStart = Math.abs(currentLocation.x - p.x) + Math.abs(currentLocation.y - p.y);
+                    }
+                    else {
+                        // 计算到Aisle 2端的距离取最小值
+                        p.distanceToStart = Math.min(Math.abs(currentLocation.y - 0)
+                            + Math.abs(p.y - 0)
+                            + Math.abs(currentLocation.x - p.x)
+                            + Math.abs(currentLocation.z - p.z),
+
+                            Math.abs(currentLocation.y - aisleLengh)
+                            + Math.abs(p.y - aisleLengh)
+                            + Math.abs(currentLocation.x - p.x)
+                            + Math.abs(currentLocation.z - p.z)
+                        );
+                    }
+                    return p;
+                });
+
+                let minVal = Math.min.apply(null, pp.map(p => p.distanceToStart));
+
+                let nextPoint = pp.find(p => p.distanceToStart === minVal);
+                if (nextPoint) {
+                    nextPoint.routed = true;
+                }
+                return nextPoint;
+            }
+        }
+
+    </script>
+</body>
+</html>
